@@ -12,7 +12,6 @@ type Store struct {
 	streams map[string]StreamState
 
 	machine *MachineSnapshot
-	scale   *ScaleSnapshot
 	shot    *ShotSettings
 	water   *WaterLevels
 	display *DisplayState
@@ -20,6 +19,25 @@ type Store struct {
 
 	lastMachineState string
 	transitions      map[string]uint64
+
+	accum      shotAccum
+	lastShot   *ShotSummary
+	shotsTotal uint64
+}
+
+// shotState is the machine state that marks an in-progress espresso shot.
+const shotState = "espresso"
+
+// minShotDuration discards espresso episodes shorter than this (flushes, aborts).
+const minShotDuration = 3 * time.Second
+
+type shotAccum struct {
+	active       bool
+	startTime    time.Time
+	peakPressure float64
+	peakFlow     float64
+	flowSum      float64
+	flowCount    float64
 }
 
 func NewStore(now func() time.Time) *Store {
@@ -64,15 +82,48 @@ func (s *Store) SetMachine(v MachineSnapshot) {
 	if s.lastMachineState != "" && s.lastMachineState != v.State {
 		s.transitions[v.State]++
 	}
+	s.updateShotLocked(v)
 	s.lastMachineState = v.State
 	s.machine = &v
 }
 
-func (s *Store) SetScale(v ScaleSnapshot) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.streamMessageLocked("scale")
-	s.scale = &v
+// updateShotLocked accumulates per-shot aggregates as machine samples arrive and
+// finalizes a shot summary when the machine leaves the espresso state. Caller holds s.mu.
+func (s *Store) updateShotLocked(v MachineSnapshot) {
+	switch {
+	case v.State == shotState && !s.accum.active:
+		s.accum = shotAccum{active: true, startTime: s.now()}
+		fallthrough
+	case v.State == shotState:
+		if v.Pressure > s.accum.peakPressure {
+			s.accum.peakPressure = v.Pressure
+		}
+		if v.Flow > s.accum.peakFlow {
+			s.accum.peakFlow = v.Flow
+		}
+		s.accum.flowSum += v.Flow
+		s.accum.flowCount++
+	case s.accum.active:
+		s.finalizeShotLocked()
+	}
+}
+
+func (s *Store) finalizeShotLocked() {
+	duration := s.now().Sub(s.accum.startTime)
+	if duration >= minShotDuration {
+		var avg float64
+		if s.accum.flowCount > 0 {
+			avg = s.accum.flowSum / s.accum.flowCount
+		}
+		s.lastShot = &ShotSummary{
+			Duration:     duration,
+			PeakPressure: s.accum.peakPressure,
+			PeakFlow:     s.accum.peakFlow,
+			AverageFlow:  avg,
+		}
+		s.shotsTotal++
+	}
+	s.accum = shotAccum{}
 }
 
 func (s *Store) SetShot(v ShotSettings) {
@@ -120,12 +171,13 @@ func (s *Store) Snapshot() Snapshot {
 		Now:         s.now(),
 		Streams:     streams,
 		Machine:     clone(s.machine),
-		Scale:       clone(s.scale),
 		Shot:        clone(s.shot),
 		Water:       clone(s.water),
 		Display:     clone(s.display),
 		Devices:     clone(s.devices),
 		Transitions: transitions,
+		LastShot:    clone(s.lastShot),
+		ShotsTotal:  s.shotsTotal,
 	}
 }
 

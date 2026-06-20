@@ -30,13 +30,3 @@ func TestParseMachine(t *testing.T) {
 		t.Fatal("timestamp was not parsed")
 	}
 }
-
-func TestParseScaleStatus(t *testing.T) {
-	got, err := ParseScale([]byte(`{"status":"disconnected"}`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Status != "disconnected" {
-		t.Fatalf("unexpected status: %s", got.Status)
-	}
-}

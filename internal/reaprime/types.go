@@ -18,13 +18,11 @@ type MachineSnapshot struct {
 	SteamTemperature       float64
 }
 
-type ScaleSnapshot struct {
-	Timestamp  time.Time
-	Status     string
-	Weight     float64
-	WeightFlow float64
-	Battery    *float64
-	TimerMS    *float64
+type ShotSummary struct {
+	Duration     time.Duration
+	PeakPressure float64
+	PeakFlow     float64
+	AverageFlow  float64
 }
 
 type ShotSettings struct {
@@ -73,12 +71,14 @@ type Snapshot struct {
 	Streams map[string]StreamState
 
 	Machine     *MachineSnapshot
-	Scale       *ScaleSnapshot
 	Shot        *ShotSettings
 	Water       *WaterLevels
 	Display     *DisplayState
 	Devices     *DevicesSnapshot
 	Transitions map[string]uint64
+
+	LastShot   *ShotSummary
+	ShotsTotal uint64
 }
 
 type StreamState struct {

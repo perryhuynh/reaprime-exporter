@@ -39,13 +39,6 @@ func (c *Client) Run(ctx context.Context) {
 			}
 			return err
 		}},
-		{name: "scale", path: "/ws/v1/scale/snapshot", parse: func(b []byte) error {
-			v, err := ParseScale(b)
-			if err == nil {
-				c.store.SetScale(v)
-			}
-			return err
-		}},
 		{name: "shot_settings", path: "/ws/v1/machine/shotSettings", parse: func(b []byte) error {
 			v, err := ParseShotSettings(b)
 			if err == nil {

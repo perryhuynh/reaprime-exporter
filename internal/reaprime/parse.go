@@ -29,26 +29,6 @@ func ParseMachine(data []byte) (MachineSnapshot, error) {
 	}, nil
 }
 
-func ParseScale(data []byte) (ScaleSnapshot, error) {
-	var raw map[string]any
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return ScaleSnapshot{}, err
-	}
-	scale := ScaleSnapshot{
-		Timestamp:  asTime(raw["timestamp"]),
-		Status:     asString(raw["status"]),
-		Weight:     asFloat(raw["weight"]),
-		WeightFlow: asFloat(raw["weightFlow"]),
-	}
-	if battery, ok := maybeFloat(raw["battery"]); ok {
-		scale.Battery = &battery
-	}
-	if timer, ok := maybeFloat(raw["timerValue"]); ok {
-		scale.TimerMS = &timer
-	}
-	return scale, nil
-}
-
 func ParseShotSettings(data []byte) (ShotSettings, error) {
 	var raw map[string]any
 	if err := json.Unmarshal(data, &raw); err != nil {
