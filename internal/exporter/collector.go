@@ -25,14 +25,12 @@ type Collector struct {
 	streamErrors        *prometheus.Desc
 	machineState        *prometheus.Desc
 	machineTemperature  *prometheus.Desc
-	machinePressure     *prometheus.Desc
-	machineFlow         *prometheus.Desc
 	machineProfileFrame *prometheus.Desc
-	scaleConnected      *prometheus.Desc
-	scaleWeight         *prometheus.Desc
-	scaleWeightFlow     *prometheus.Desc
-	scaleBattery        *prometheus.Desc
-	scaleTimer          *prometheus.Desc
+	shotsTotal          *prometheus.Desc
+	shotDuration        *prometheus.Desc
+	shotPeakPressure    *prometheus.Desc
+	shotPeakFlow        *prometheus.Desc
+	shotAverageFlow     *prometheus.Desc
 	shotSetting         *prometheus.Desc
 	waterLevel          *prometheus.Desc
 	displayBool         *prometheus.Desc
@@ -56,14 +54,12 @@ func NewCollector(store *reaprime.Store, build BuildInfo) *Collector {
 		streamErrors:        prometheus.NewDesc("decent_reaprime_stream_errors_total", "Total Reaprime stream errors since exporter start.", []string{"stream"}, labels),
 		machineState:        prometheus.NewDesc("decent_machine_state", "Current machine state as a one-hot gauge.", []string{"state", "substate"}, labels),
 		machineTemperature:  prometheus.NewDesc("decent_machine_temperature_celsius", "Machine temperatures in Celsius.", []string{"sensor"}, labels),
-		machinePressure:     prometheus.NewDesc("decent_machine_pressure_bar", "Machine pressure values in bar.", []string{"kind"}, labels),
-		machineFlow:         prometheus.NewDesc("decent_machine_flow_ml_per_second", "Machine flow values in ml/s.", []string{"kind"}, labels),
 		machineProfileFrame: prometheus.NewDesc("decent_machine_profile_frame", "Current machine profile frame.", nil, labels),
-		scaleConnected:      prometheus.NewDesc("decent_scale_connected", "Whether Reaprime reports the scale connected.", nil, labels),
-		scaleWeight:         prometheus.NewDesc("decent_scale_weight_grams", "Current scale weight in grams.", nil, labels),
-		scaleWeightFlow:     prometheus.NewDesc("decent_scale_weight_flow_grams_per_second", "Current smoothed scale-derived flow in g/s.", nil, labels),
-		scaleBattery:        prometheus.NewDesc("decent_scale_battery_percent", "Current scale battery percentage.", nil, labels),
-		scaleTimer:          prometheus.NewDesc("decent_scale_timer_seconds", "Current scale timer value in seconds.", nil, labels),
+		shotsTotal:          prometheus.NewDesc("decent_shots_total", "Completed espresso shots observed since exporter start.", nil, labels),
+		shotDuration:        prometheus.NewDesc("decent_shot_duration_seconds", "Duration of the last completed espresso shot in seconds.", nil, labels),
+		shotPeakPressure:    prometheus.NewDesc("decent_shot_peak_pressure_bar", "Peak pressure during the last completed espresso shot in bar.", nil, labels),
+		shotPeakFlow:        prometheus.NewDesc("decent_shot_peak_flow_ml_per_second", "Peak machine flow during the last completed espresso shot in ml/s.", nil, labels),
+		shotAverageFlow:     prometheus.NewDesc("decent_shot_average_flow_ml_per_second", "Mean machine flow during the last completed espresso shot in ml/s.", nil, labels),
 		shotSetting:         prometheus.NewDesc("decent_shot_setting", "Current shot setting values.", []string{"setting"}, labels),
 		waterLevel:          prometheus.NewDesc("decent_water_level_millimeters", "Water tank level values in millimeters.", []string{"kind"}, labels),
 		displayBool:         prometheus.NewDesc("decent_display_state", "Display boolean state as one-hot gauges.", []string{"state"}, labels),
@@ -77,8 +73,8 @@ func NewCollector(store *reaprime.Store, build BuildInfo) *Collector {
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	for _, desc := range []*prometheus.Desc{
 		c.buildInfo, c.streamConnected, c.streamLastMessage, c.streamMessages, c.streamReconnects, c.streamErrors,
-		c.machineState, c.machineTemperature, c.machinePressure, c.machineFlow, c.machineProfileFrame,
-		c.scaleConnected, c.scaleWeight, c.scaleWeightFlow, c.scaleBattery, c.scaleTimer,
+		c.machineState, c.machineTemperature, c.machineProfileFrame,
+		c.shotsTotal, c.shotDuration, c.shotPeakPressure, c.shotPeakFlow, c.shotAverageFlow,
 		c.shotSetting, c.waterLevel, c.displayBool, c.displayBrightness, c.deviceCount, c.devicesScanning, c.machineTransitions,
 	} {
 		ch <- desc
@@ -107,24 +103,16 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(c.machineTemperature, prometheus.GaugeValue, m.TargetMixTemperature, "target_mix")
 		ch <- prometheus.MustNewConstMetric(c.machineTemperature, prometheus.GaugeValue, m.TargetGroupTemperature, "target_group")
 		ch <- prometheus.MustNewConstMetric(c.machineTemperature, prometheus.GaugeValue, m.SteamTemperature, "steam")
-		ch <- prometheus.MustNewConstMetric(c.machinePressure, prometheus.GaugeValue, m.Pressure, "actual")
-		ch <- prometheus.MustNewConstMetric(c.machinePressure, prometheus.GaugeValue, m.TargetPressure, "target")
-		ch <- prometheus.MustNewConstMetric(c.machineFlow, prometheus.GaugeValue, m.Flow, "actual")
-		ch <- prometheus.MustNewConstMetric(c.machineFlow, prometheus.GaugeValue, m.TargetFlow, "target")
 		ch <- prometheus.MustNewConstMetric(c.machineProfileFrame, prometheus.GaugeValue, m.ProfileFrame)
 	}
 
-	if snap.Scale != nil {
-		s := snap.Scale
-		ch <- prometheus.MustNewConstMetric(c.scaleConnected, prometheus.GaugeValue, boolValue(s.Status == "connected" || s.Status == ""))
-		ch <- prometheus.MustNewConstMetric(c.scaleWeight, prometheus.GaugeValue, s.Weight)
-		ch <- prometheus.MustNewConstMetric(c.scaleWeightFlow, prometheus.GaugeValue, s.WeightFlow)
-		if s.Battery != nil {
-			ch <- prometheus.MustNewConstMetric(c.scaleBattery, prometheus.GaugeValue, *s.Battery)
-		}
-		if s.TimerMS != nil {
-			ch <- prometheus.MustNewConstMetric(c.scaleTimer, prometheus.GaugeValue, *s.TimerMS/1000)
-		}
+	ch <- prometheus.MustNewConstMetric(c.shotsTotal, prometheus.CounterValue, float64(snap.ShotsTotal))
+	if snap.LastShot != nil {
+		shot := snap.LastShot
+		ch <- prometheus.MustNewConstMetric(c.shotDuration, prometheus.GaugeValue, shot.Duration.Seconds())
+		ch <- prometheus.MustNewConstMetric(c.shotPeakPressure, prometheus.GaugeValue, shot.PeakPressure)
+		ch <- prometheus.MustNewConstMetric(c.shotPeakFlow, prometheus.GaugeValue, shot.PeakFlow)
+		ch <- prometheus.MustNewConstMetric(c.shotAverageFlow, prometheus.GaugeValue, shot.AverageFlow)
 	}
 
 	if snap.Shot != nil {

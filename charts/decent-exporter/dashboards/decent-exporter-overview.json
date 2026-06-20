@@ -117,17 +117,181 @@
       },
       "fieldConfig": {
         "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 14,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "max(decent_shot_duration_seconds{namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Shot Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
           "unit": "pressurebar"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 10,
-        "x": 14,
+        "h": 4,
+        "w": 5,
+        "x": 19,
         "y": 0
       },
-      "id": 3,
+      "id": 7,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "max(decent_shot_peak_pressure_bar{namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Shot Peak Pressure",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 14,
+        "y": 4
+      },
+      "id": 8,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "max(decent_shot_peak_flow_ml_per_second{namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Shot Peak Flow (ml/s)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 19,
+        "y": 4
+      },
+      "id": 9,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "max(decent_shot_average_flow_ml_per_second{namespace=~\"$namespace\", pod=~\"$pod\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Shot Average Flow (ml/s)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 16,
+        "x": 0,
+        "y": 8
+      },
+      "id": 5,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -141,73 +305,12 @@
       },
       "targets": [
         {
-          "expr": "decent_machine_pressure_bar{namespace=~\"$namespace\", pod=~\"$pod\"}",
-          "legendFormat": "{{kind}}",
+          "expr": "sum(increase(decent_shots_total{namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "shots",
           "refId": "A"
         }
       ],
-      "title": "Pressure",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "velocityms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 0,
-        "y": 8
-      },
-      "id": 4,
-      "targets": [
-        {
-          "expr": "decent_machine_flow_ml_per_second{namespace=~\"$namespace\", pod=~\"$pod\"}",
-          "legendFormat": "{{kind}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Machine Flow",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "massg"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 8,
-        "y": 8
-      },
-      "id": 5,
-      "targets": [
-        {
-          "expr": "decent_scale_weight_grams{namespace=~\"$namespace\", pod=~\"$pod\"}",
-          "legendFormat": "weight",
-          "refId": "A"
-        },
-        {
-          "expr": "decent_scale_weight_flow_grams_per_second{namespace=~\"$namespace\", pod=~\"$pod\"}",
-          "legendFormat": "flow",
-          "refId": "B"
-        }
-      ],
-      "title": "Scale",
+      "title": "Shots",
       "type": "timeseries"
     },
     {

@@ -28,3 +28,10 @@ curl http://127.0.0.1:8080/metrics
 ## Metrics scope
 
 The exporter intentionally avoids labels containing serial numbers, device IDs, bean names, profile names, notes, logs, or raw BLE payloads.
+
+Pressure, flow, and weight change sub-second during a shot, but Prometheus scrapes every 15–60s — at that resolution instantaneous gauges of those signals are aliased noise. Instead of exporting them raw, the exporter watches every Reaprime machine sample (~1.7/s) and emits per-shot summaries that persist between scrapes:
+
+- `decent_shots_total` — completed espresso shots since start.
+- `decent_shot_duration_seconds`, `decent_shot_peak_pressure_bar`, `decent_shot_peak_flow_ml_per_second`, `decent_shot_average_flow_ml_per_second` — stats for the last completed shot.
+
+A shot is the span the machine spends in the `espresso` state; episodes shorter than 3s (flushes, aborts) are discarded. The scale is not exported at all.
